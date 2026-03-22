@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<title>Zapret GUI</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ── Темы ── */
+  [data-theme="dark"] {
+    --bg0:#0d0f18; --bg1:#131620; --bg2:#181c28; --bg3:#1e2332; --bg4:#252a3a;
+    --border:#252a3d; --border2:#303650;
+    --text1:#e8ecff; --text2:#a8b0d0; --text3:#5a6080;
+    --card-shadow:none;
+  }
+  [data-theme="light"] {
+    --bg0:#eef0f8; --bg1:#ffffff; --bg2:#f5f6fc; --bg3:#eceef8; --bg4:#e0e4f4;
+    --border:#cdd2e8; --border2:#b0b8d8;
+    --text1:#0e1020; --text2:#3a4060; --text3:#8890b0;
+    --card-shadow:0 1px 4px rgba(0,0,0,.08);
+  }
+  :root {
+    --accent:#00d4ff; --accent-dim:#00d4ff15;
+    --green:#00e070; --green-dim:#00e07015;
+    --red:#ff4060; --red-dim:#ff406015;
+    --amber:#ffaa00; --amber-dim:#ffaa0018;
+    --mono:'JetBrains Mono',monospace;
+    --sans:'Inter',system-ui,sans-serif;
+  }
+  [data-theme="light"] {
+    --accent:#0098c8; --accent-dim:#0098c812;
+    --green:#009940; --green-dim:#00994012;
+    --red:#cc2040; --red-dim:#cc204012;
+    --amber:#b87800; --amber-dim:#b8780012;
+  }
+
+  html,body { height:100%; background:var(--bg0); color:var(--text1); font-family:var(--sans); font-size:14px; overflow:hidden; transition:background .2s,color .2s; }
+  #app { display:flex; flex-direction:column; height:100vh; }
+
+  /* Header */
+  header { display:flex; align-items:center; gap:12px; padding:0 20px; height:52px; background:var(--bg1); border-bottom:1px solid var(--border); flex-shrink:0; }
+  .logo { font-family:var(--mono); font-size:20px; font-weight:600; letter-spacing:6px; color:var(--accent); user-select:none; }
+  .logo-sub { font-size:11px; color:var(--text3); letter-spacing:2px; user-select:none; }
+  .status-pill { display:flex; align-items:center; gap:6px; padding:4px 14px; border-radius:20px; font-size:11px; font-weight:600; letter-spacing:1px; border:1px solid var(--border2); background:var(--bg3); transition:all .3s; user-select:none; }
+  .status-pill.running { border-color:var(--green); background:var(--green-dim); color:var(--green); }
+  .status-pill.stopped { color:var(--text3); }
+  .status-dot { width:7px; height:7px; border-radius:50%; background:currentColor; opacity:.5; }
+  .status-pill.running .status-dot { opacity:1; animation:pulse 2s ease-in-out infinite; }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  .theme-btn { background:none; border:1px solid var(--border2); border-radius:6px; padding:5px 9px; cursor:pointer; color:var(--text2); font-size:15px; line-height:1; user-select:none; transition:all .2s; }
+  .theme-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+  /* Tabs */
+  .tabs { display:flex; background:var(--bg1); border-bottom:1px solid var(--border); flex-shrink:0; padding:0 20px; }
+  .tab { padding:10px 18px; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; font-weight:600; color:var(--text3); cursor:pointer; border-bottom:2px solid transparent; transition:all .2s; user-select:none; }
+  .tab:hover { color:var(--text2); }
+  .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+  /* Content */
+  .content { flex:1; overflow-y:auto; padding:20px; min-height:0; }
+  .panel { display:none; animation:fadeIn .18s ease; }
+  .panel.active { display:block; }
+  @keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+
+  /* Cards */
+  .card { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:16px 18px; margin-bottom:14px; box-shadow:var(--card-shadow); transition:background .2s,border-color .2s; }
+  .card-title { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--text3); font-weight:600; margin-bottom:12px; user-select:none; }
+
+  /* Buttons */
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:9px 18px; border-radius:7px; font-family:var(--sans); font-size:13px; font-weight:500; cursor:pointer; border:1px solid var(--border2); background:var(--bg3); color:var(--text2); transition:all .15s; outline:none; user-select:none; }
+  .btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
+  .btn:active { transform:scale(.97); }
+  .btn:disabled { opacity:.35; cursor:not-allowed; pointer-events:none; }
+  .btn-start { background:var(--green-dim); border-color:var(--green); color:var(--green); font-weight:600; padding:11px 24px; }
+  .btn-start:hover { background:var(--green); color:#fff; }
+  .btn-stop  { background:var(--red-dim); border-color:var(--red); color:var(--red); font-weight:600; padding:11px 24px; }
+  .btn-stop:hover  { background:var(--red); color:#fff; }
+  .btn-restart { background:var(--amber-dim); border-color:var(--amber); color:var(--amber); font-weight:600; padding:11px 24px; }
+  .btn-restart:hover { background:var(--amber); color:#000; }
+  .btn-primary { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+  .btn-primary:hover { background:var(--accent); color:#fff; }
+  .btn-amber { background:var(--amber-dim); border-color:var(--amber); color:var(--amber); }
+  .btn-amber:hover { background:var(--amber); color:#000; }
+  .btn-danger { background:var(--red-dim); border-color:var(--red); color:var(--red); }
+  .btn-danger:hover { background:var(--red); color:#fff; }
+  .btn-sm { padding:6px 13px; font-size:12px; }
+  .btn-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; align-items:center; }
+
+  /* Strategy selector */
+  .strategy-selector { background:var(--bg3); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .strategy-current { display:flex; align-items:center; gap:12px; padding:13px 16px; cursor:pointer; transition:background .15s; user-select:none; }
+  .strategy-current:hover { background:var(--bg4); }
+  .s-dot { width:10px; height:10px; border-radius:50%; background:var(--text3); flex-shrink:0; transition:all .3s; }
+  .s-dot.active { background:var(--accent); box-shadow:0 0 0 3px var(--accent-dim); }
+  .s-name-cur { font-family:var(--mono); font-size:13px; color:var(--text1); flex:1; font-weight:500; }
+  .s-hint { font-size:11px; color:var(--text3); }
+  .s-chev { font-size:11px; color:var(--text3); transition:transform .22s; flex-shrink:0; }
+  .s-chev.open { transform:rotate(180deg); }
+  .s-dropdown { border-top:1px solid var(--border); max-height:0; overflow:hidden; transition:max-height .28s ease; }
+  .s-dropdown.open { max-height:380px; overflow-y:auto; }
+  .s-search { padding:10px 14px; border-bottom:1px solid var(--border); }
+  .s-search input { width:100%; background:var(--bg2); border:1px solid var(--border2); border-radius:6px; padding:7px 10px; color:var(--text1); font-family:var(--mono); font-size:12px; outline:none; transition:border-color .15s; }
+  .s-search input:focus { border-color:var(--accent); }
+  .group-label { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--text3); padding:8px 14px 4px; user-select:none; }
+  .s-item { display:flex; align-items:center; gap:10px; padding:9px 14px; cursor:pointer; transition:background .12s; user-select:none; }
+  .s-item:hover { background:var(--bg4); }
+  .s-item.selected { background:var(--accent-dim); }
+  .s-item.selected .s-fname { color:var(--accent); font-weight:500; }
+  .s-radio { width:12px; height:12px; border-radius:50%; border:2px solid var(--border2); flex-shrink:0; transition:all .12s; }
+  .s-item.selected .s-radio { border-color:var(--accent); background:var(--accent); }
+  .s-fname { font-family:var(--mono); font-size:12px; color:var(--text2); }
+
+  /* Restart hint */
+  .restart-hint { display:none; align-items:center; gap:8px; font-size:12px; color:var(--amber); padding:7px 12px; background:var(--amber-dim); border:1px solid var(--amber); border-radius:6px; margin-bottom:10px; user-select:none; }
+  .restart-hint.visible { display:flex; }
+
+  /* Log */
+  .log-box { background:var(--bg0); border:1px solid var(--border); border-radius:7px; padding:12px 14px; font-family:var(--mono); font-size:11.5px; line-height:1.75; overflow-y:auto; user-select:text; cursor:text; }
+  .log-line { display:flex; gap:8px; }
+  .log-ts { color:var(--text3); flex-shrink:0; }
+  .log-text.info    { color:var(--accent); }
+  .log-text.success { color:var(--green); }
+  .log-text.warn    { color:var(--amber); }
+  .log-text.error   { color:var(--red); }
+
+  /* Toast */
+  #toast-box { position:fixed; bottom:36px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:8px; pointer-events:none; }
+  .toast { display:flex; align-items:flex-start; gap:10px; padding:11px 15px; border-radius:9px; border:1px solid var(--border2); background:var(--bg2); color:var(--text1); font-size:13px; max-width:310px; pointer-events:all; animation:toastIn .22s ease; transition:opacity .25s,transform .25s; box-shadow:0 4px 16px rgba(0,0,0,.25); }
+  .toast.out { opacity:0; transform:translateX(16px); }
+  .toast-icon { font-size:15px; flex-shrink:0; margin-top:1px; }
+  .toast-title { font-weight:600; font-size:13px; }
+  .toast-msg { font-size:11.5px; color:var(--text2); margin-top:2px; line-height:1.4; }
+  .toast.success { border-color:var(--green); } .toast.success .toast-title { color:var(--green); }
+  .toast.error   { border-color:var(--red);   } .toast.error   .toast-title { color:var(--red);   }
+  .toast.warn    { border-color:var(--amber);  } .toast.warn    .toast-title { color:var(--amber);  }
+  .toast.info    { border-color:var(--accent); } .toast.info    .toast-title { color:var(--accent); }
+  @keyframes toastIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+
+  /* Progress */
+  .progress-wrap { height:5px; background:var(--bg3); border-radius:3px; overflow:hidden; margin:10px 0; }
+  .progress-bar  { height:100%; background:var(--accent); border-radius:3px; transition:width .25s; width:0%; }
+  .progress-msg  { font-size:12px; color:var(--text2); min-height:18px; }
+
+  /* Update banner */
+  .update-banner { display:none; align-items:center; gap:12px; padding:11px 16px; border-radius:8px; background:var(--amber-dim); border:1px solid var(--amber); margin:12px 20px 0; }
+  .update-banner.visible { display:flex; }
+  .update-title { font-weight:600; color:var(--amber); font-size:13px; }
+  .update-sub { font-size:11px; color:var(--text2); margin-top:2px; }
+
+  /* Actions */
+  .actions-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .action-card { background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:14px 16px; cursor:pointer; transition:all .15s; display:flex; flex-direction:column; gap:4px; user-select:none; }
+  .action-card:hover { border-color:var(--accent); background:var(--bg4); }
+  .action-card:active { transform:scale(.98); }
+  .action-card.danger:hover { border-color:var(--red); }
+  .action-card.amber:hover  { border-color:var(--amber); }
+  .action-icon  { font-size:18px; margin-bottom:2px; }
+  .action-title { font-size:13px; font-weight:600; color:var(--text1); }
+  .action-desc  { font-size:11px; color:var(--text3); line-height:1.5; }
+
+  /* Inline select */
+  .inline-select { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .isel-btn { padding:5px 13px; border-radius:6px; font-size:11px; font-weight:500; cursor:pointer; border:1px solid var(--border2); background:var(--bg4); color:var(--text2); transition:all .12s; user-select:none; }
+  .isel-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .isel-btn.active { border-color:var(--accent); background:var(--accent-dim); color:var(--accent); font-weight:600; }
+
+  /* Services */
+  .svc-item { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:6px; background:var(--bg3); border:1px solid var(--border); font-size:12px; margin-bottom:6px; }
+  .svc-dot { width:8px; height:8px; border-radius:50%; background:var(--text3); flex-shrink:0; }
+  .svc-dot.running { background:var(--green); }
+  .svc-badge { font-size:10px; padding:2px 8px; border-radius:10px; font-weight:600; margin-left:auto; user-select:none; }
+  .svc-badge.running { background:var(--green-dim); color:var(--green); }
+  .svc-badge.stopped { background:var(--bg4); color:var(--text3); }
+
+  /* Toggle */
+  .toggle-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); }
+  .toggle-row:last-child { border-bottom:none; }
+  .toggle-label { font-size:13px; color:var(--text1); font-weight:500; user-select:none; }
+  .toggle-sub { font-size:11px; color:var(--text3); margin-top:2px; }
+  .toggle { position:relative; width:38px; height:21px; cursor:pointer; flex-shrink:0; }
+  .toggle input { opacity:0; width:0; height:0; position:absolute; }
+  .toggle-track { position:absolute; inset:0; border-radius:11px; background:var(--bg4); border:1px solid var(--border2); transition:all .22s; }
+  .toggle input:checked ~ .toggle-track { background:var(--accent); border-color:var(--accent); }
+  .toggle-thumb { position:absolute; top:3px; left:3px; width:15px; height:15px; border-radius:50%; background:var(--text3); transition:all .22s; }
+  .toggle input:checked ~ .toggle-track .toggle-thumb { transform:translateX(17px); background:#fff; }
+
+  /* Install */
+  #install-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:24px; text-align:center; padding:40px; }
+  .install-logo { font-family:var(--mono); font-size:48px; font-weight:600; color:var(--accent); letter-spacing:10px; }
+  .install-sub { color:var(--text2); font-size:14px; max-width:420px; line-height:1.7; }
+
+  /* Statusbar */
+  .statusbar { display:flex; align-items:center; padding:0 20px; height:26px; background:var(--bg0); border-top:1px solid var(--border); font-size:11px; color:var(--text3); flex-shrink:0; user-select:none; }
+
+  /* Link */
+  .link { color:var(--accent); text-decoration:none; cursor:pointer; font-weight:500; }
+  .link:hover { text-decoration:underline; }
+
+  ::-webkit-scrollbar { width:5px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+  ::-webkit-scrollbar-thumb:hover { background:var(--accent); }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <span class="logo">ZAPRET</span>
+    <span class="logo-sub">discord · youtube</span>
+    <div style="flex:1"></div>
+    <button class="theme-btn" id="theme-btn">🌙</button>
+    <div style="width:10px"></div>
+    <div class="status-pill stopped" id="status-pill">
+      <div class="status-dot"></div>
+      <span id="status-text">ОСТАНОВЛЕН</span>
+    </div>
+  </header>
+
+  <div class="update-banner" id="update-banner">
+    <span style="font-size:18px;flex-shrink:0">⚡</span>
+    <div style="flex:1">
+      <div class="update-title" id="update-title">Доступно обновление</div>
+      <div class="update-sub" id="update-sub"></div>
+    </div>
+    <button class="btn btn-sm btn-amber" id="btn-update-now">Обновить</button>
+    <button class="btn btn-sm" onclick="document.getElementById('update-banner').classList.remove('visible')">✕</button>
+  </div>
+
+  <div id="main-app" style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0">
+    <div class="tabs">
+      <div class="tab active" data-tab="home">▶ Запуск</div>
+      <div class="tab" data-tab="log">Лог</div>
+      <div class="tab" data-tab="service">Инструменты</div>
+      <div class="tab" data-tab="settings">Настройки</div>
+    </div>
+
+    <div class="content">
+
+      <!-- ЗАПУСК -->
+      <div class="panel active" id="tab-home">
+        <div class="card">
+          <div class="card-title">Стратегия обхода</div>
+          <div class="strategy-selector" id="s-sel">
+            <div class="strategy-current" onclick="toggleList()">
+              <div class="s-dot" id="s-dot"></div>
+              <span class="s-name-cur" id="s-cur">Не выбрана</span>
+              <span class="s-hint" id="s-hint">нажмите чтобы выбрать</span>
+              <span class="s-chev" id="s-chev">▼</span>
+            </div>
+            <div class="s-dropdown" id="s-drop">
+              <div class="s-search"><input type="text" id="s-srch" placeholder="Поиск…" oninput="filterList(this.value)"></div>
+              <div id="s-list"></div>
+            </div>
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text3)">💡 Не работает — пробуйте следующую (ALT, FAKE TLS AUTO…)</div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-start"   id="btn-start">▶ Запустить</button>
+          <button class="btn btn-restart" id="btn-restart" style="display:none">↺ Перезапустить</button>
+          <button class="btn btn-stop"    id="btn-stop">■ Остановить</button>
+          <button class="btn btn-sm btn-primary" id="btn-upd">🔄 Обновления</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">События</div>
+          <div class="log-box" id="mini-log" style="max-height:200px;min-height:60px"></div>
+        </div>
+      </div>
+
+      <!-- ЛОГ -->
+      <div class="panel" id="tab-log">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div class="card-title" style="margin:0">Полный лог</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-sm" id="btn-log-clear">Очистить</button>
+              <button class="btn btn-sm" id="btn-log-save">💾 Сохранить</button>
+            </div>
+          </div>
+          <div class="log-box" id="full-log" style="max-height:calc(100vh - 230px);min-height:200px"></div>
+        </div>
+      </div>
+
+      <!-- ИНСТРУМЕНТЫ -->
+      <div class="panel" id="tab-service">
+        <div class="card">
+          <div class="card-title">Статус служб</div>
+          <div id="svc-list" style="color:var(--text3);font-size:12px;margin-bottom:10px">Нажмите «Проверить»</div>
+          <button class="btn btn-sm" id="btn-svc-chk">🔍 Проверить статус</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Служба Windows</div>
+          <div class="actions-grid">
+            <div class="action-card" onclick="svc('install')">
+              <div class="action-icon">✅</div>
+              <div class="action-title">Install Service</div>
+              <div class="action-desc">Установить текущую стратегию как службу автозапуска</div>
+            </div>
+            <div class="action-card danger" onclick="svc('remove')">
+              <div class="action-icon">🗑</div>
+              <div class="action-title">Remove Services</div>
+              <div class="action-desc">Удалить все службы zapret и WinDivert</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Game Filter</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:6px">Обход игрового трафика (порты 1024–65535). Режим: <span id="gf-val" style="color:var(--accent);font-weight:600">…</span></div>
+          <div class="inline-select">
+            <div class="isel-btn" id="gf-off" onclick="svc('game_filter_off')">Выключен</div>
+            <div class="isel-btn" id="gf-all" onclick="svc('game_filter_all')">TCP и UDP</div>
+            <div class="isel-btn" id="gf-tcp" onclick="svc('game_filter_tcp')">Только TCP</div>
+            <div class="isel-btn" id="gf-udp" onclick="svc('game_filter_udp')">Только UDP</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">IPSet Filter</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:6px">Фильтрация по IP-адресам. Режим: <span id="ipset-val" style="color:var(--accent);font-weight:600">…</span></div>
+          <div class="inline-select">
+            <div class="isel-btn" id="ipset-none"   onclick="svc('ipset_none')">none</div>
+            <div class="isel-btn" id="ipset-loaded" onclick="svc('ipset_loaded')">loaded</div>
+            <div class="isel-btn" id="ipset-any"    onclick="svc('ipset_any')">any</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Обновления данных</div>
+          <div class="actions-grid">
+            <div class="action-card" onclick="svc('update_ipset')">
+              <div class="action-icon">🌐</div>
+              <div class="action-title">Update IPSet List</div>
+              <div class="action-desc">Обновить ipset-all.txt из репозитория</div>
+            </div>
+            <div class="action-card" onclick="svc('update_hosts')">
+              <div class="action-icon">📝</div>
+              <div class="action-title">Update Hosts File</div>
+              <div class="action-desc">Починить веб-Telegram и голос в Discord</div>
+            </div>
+            <div class="action-card" onclick="checkUpdates(false)">
+              <div class="action-icon">🔄</div>
+              <div class="action-title">Check for Updates</div>
+              <div class="action-desc">Проверить новую версию zapret</div>
+            </div>
+            <div class="action-card amber" onclick="svc('toggle_autoupdate')">
+              <div class="action-icon">⚙</div>
+              <div class="action-title">Auto-Update Check</div>
+              <div class="action-desc">Статус: <span id="au-val">…</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Диагностика</div>
+          <div class="actions-grid">
+            <div class="action-card" onclick="svc('diagnostics')">
+              <div class="action-icon">🩺</div>
+              <div class="action-title">Run Diagnostics</div>
+              <div class="action-desc">BFE, прокси, конфликтующие службы, Adguard</div>
+            </div>
+            <div class="action-card" onclick="svc('run_tests')">
+              <div class="action-icon">🧪</div>
+              <div class="action-title">Run Tests</div>
+              <div class="action-desc">Запустить тесты стратегий</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- НАСТРОЙКИ -->
+      <div class="panel" id="tab-settings">
+        <div class="card">
+          <div class="card-title">Автозапуск</div>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Запускать GUI при старте Windows</div>
+              <div class="toggle-sub">Работает для установщика и portable версии</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="tgl-autostart">
+              <div class="toggle-track"><div class="toggle-thumb"></div></div>
+            </label>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Автоматически запускать стратегию</div>
+              <div class="toggle-sub">Запускать последнюю выбранную стратегию при открытии</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="tgl-autorun">
+              <div class="toggle-track"><div class="toggle-thumb"></div></div>
+            </label>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Обновления zapret</div>
+          <div id="upd-info" style="font-size:12px;color:var(--text2);margin-bottom:12px;min-height:18px"></div>
+          <div class="btn-row">
+            <button class="btn btn-sm" id="btn-settings-upd">🔄 Проверить обновления</button>
+            <button class="btn btn-sm" id="btn-reinstall">⬇ Переустановить zapret</button>
+            <button class="btn btn-sm btn-danger" id="btn-uninstall">🗑 Удалить zapret</button>
+            <button class="btn btn-sm" id="btn-open-dir">📁 Локальные файлы</button>
+            <button class="btn btn-sm" id="btn-gh">GitHub ↗</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">О приложении</div>
+          <div style="font-size:13px;color:var(--text2);line-height:2.0">
+            <div>Zapret GUI — интерфейс для <a class="link" onclick="openLink('https://github.com/Flowseal/zapret-discord-youtube')">flowseal/zapret-discord-youtube ↗</a></div>
+            <div style="margin-top:6px">Автор: <a class="link" onclick="openLink('https://github.com/Boomerokk')">github.com/Boomerokk ↗</a></div>
+            <div style="margin-top:6px;color:var(--text3)">Оригинальный проект: <a class="link" style="color:var(--text3)" onclick="openLink('https://github.com/bol-van/zapret')">bol-van/zapret ↗</a></div>
+            <div style="margin-top:6px;color:var(--text3)">Версия: 1.0.0</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="statusbar">
+      <span id="sb-strat">нет активной стратегии</span>
+      <div style="flex:1"></div>
+    </div>
+  </div>
+
+  <!-- Первый запуск -->
+  <div id="install-screen" style="display:none">
+    <div class="install-logo">ZAPRET</div>
+    <div class="install-sub">Первый запуск! Нужно скачать <strong>zapret-discord-youtube</strong> с GitHub. Займёт ~20 секунд.</div>
+    <div style="width:100%;max-width:420px">
+      <div class="progress-wrap"><div class="progress-bar" id="inst-bar"></div></div>
+      <div class="progress-msg" id="inst-msg"></div>
+    </div>
+    <button class="btn btn-primary" id="btn-install" style="padding:14px 36px;font-size:15px">⬇ Скачать zapret</button>
+  </div>
+
+  <div id="toast-box"></div>
+</div>
+
+<script>
+const invoke = window.__TAURI__.core.invoke;
+const listen  = window.__TAURI__.event.listen;
+
+// ── Состояние ─────────────────────────────────────────────────────────────────
+let sel     = localStorage.getItem('selStrategy') || null; // выбрана в UI
+let active  = null;   // реально запущенная стратегия
+let running = false;
+let strategies = [];
+let logs = [];
+let listOpen = false;
+
+// ── Тема ──────────────────────────────────────────────────────────────────────
+function setTheme(t, save=true) {
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('theme-btn').textContent = t==='dark' ? '🌙' : '☀️';
+  if(save) localStorage.setItem('theme', t);
+}
+setTheme(localStorage.getItem('theme') || 'dark', false);
+document.getElementById('theme-btn').onclick = () => {
+  setTheme(document.documentElement.getAttribute('data-theme')==='dark' ? 'light' : 'dark');
+};
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+const TICONS  = {success:'✔', error:'✗', warn:'⚠', info:'ℹ'};
+const TTITLES = {success:'Готово', error:'Ошибка', warn:'Внимание', info:'Информация'};
+function toast(msg, type='info', ms=3500) {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span class="toast-icon">${TICONS[type]||'ℹ'}</span><div><div class="toast-title">${TTITLES[type]}</div><div class="toast-msg">${esc(msg)}</div></div>`;
+  document.getElementById('toast-box').appendChild(el);
+  setTimeout(()=>{ el.classList.add('out'); setTimeout(()=>el.remove(),280); }, ms);
+}
+
+// ── Утилиты ───────────────────────────────────────────────────────────────────
+const pad = n=>String(n).padStart(2,'0');
+function ts() { const d=new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function log(text, level='success') {
+  logs.push({ts:ts(),text,level});
+  const html = `<div class="log-line"><span class="log-ts">[${ts()}]</span> <span class="log-text ${level}">${esc(text)}</span></div>`;
+  ['mini-log','full-log'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.insertAdjacentHTML('beforeend',html);
+    if(id==='mini-log'&&el.children.length>80) el.firstChild.remove();
+    el.scrollTop=el.scrollHeight;
+  });
+}
+
+// ── Кнопки управления ─────────────────────────────────────────────────────────
+function refreshButtons() {
+  // running=false → ЗАПУСТИТЬ (зелёная)
+  // running=true  → ПЕРЕЗАПУСТИТЬ (жёлтая) + ОСТАНОВИТЬ
+  document.getElementById('btn-start').style.display   = running ? 'none' : '';
+  document.getElementById('btn-restart').style.display = running ? '' : 'none';
+  document.getElementById('btn-stop').style.display    = running ? '' : 'none';
+  document.getElementById('btn-start').disabled   = false;
+  document.getElementById('btn-restart').disabled = false;
+  document.getElementById('btn-stop').disabled    = false;
+  const pill = document.getElementById('status-pill');
+  pill.className = 'status-pill ' + (running ? 'running' : 'stopped');
+  document.getElementById('status-text').textContent = running ? 'АКТИВЕН' : 'ОСТАНОВЛЕН';
+}
+
+function setRunning(r) {
+  running = r;
+  if (!r) active = null;
+  refreshButtons();
+}
+
+// ── Табы ──────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-'+tab.dataset.tab).classList.add('active');
+  };
+});
+
+// ── Стратегии ─────────────────────────────────────────────────────────────────
+function toggleList() {
+  listOpen = !listOpen;
+  document.getElementById('s-drop').classList.toggle('open', listOpen);
+  document.getElementById('s-chev').classList.toggle('open', listOpen);
+  if(listOpen) setTimeout(()=>document.getElementById('s-srch').focus(), 150);
+}
+function closeList() {
+  listOpen=false;
+  document.getElementById('s-drop').classList.remove('open');
+  document.getElementById('s-chev').classList.remove('open');
+}
+document.addEventListener('click', e=>{
+  if(listOpen && !document.getElementById('s-sel').contains(e.target)) closeList();
+});
+
+function filterList(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('#s-list .s-item').forEach(el=>{
+    el.style.display = el.dataset.f.toLowerCase().includes(q) ? '' : 'none';
+  });
+  document.querySelectorAll('#s-list .group-label').forEach(gl=>{
+    let sib=gl.nextElementSibling, has=false;
+    while(sib && !sib.classList.contains('group-label')) {
+      if(sib.style.display!=='none') has=true;
+      sib=sib.nextElementSibling;
+    }
+    gl.style.display = has ? '' : 'none';
+  });
+}
+
+async function loadStrategies() {
+  try {
+    strategies = await invoke('list_strategies');
+    renderStrategies();
+    const saved = localStorage.getItem('selStrategy');
+    if(saved && strategies.find(s=>s.filename===saved)) pick(saved, false);
+    else if(strategies.length) pick(strategies[0].filename, false);
+  } catch(e) {
+    document.getElementById('s-list').innerHTML = `<div style="padding:12px 14px;color:var(--red);font-size:12px">${esc(e)}</div>`;
+  }
+}
+
+function renderStrategies() {
+  const groups = {};
+  strategies.forEach(s=>{ (groups[s.group]=groups[s.group]||[]).push(s); });
+  const order = ['Основные','ALT','Simple Fake','Fake TLS Auto'];
+  let out = '';
+  [...order, ...Object.keys(groups).filter(g=>!order.includes(g))].forEach(g=>{
+    if(!groups[g]) return;
+    out += `<div class="group-label">${g}</div>`;
+    groups[g].forEach(s=>{
+      out += `<div class="s-item ${sel===s.filename?'selected':''}" data-f="${esc(s.filename)}" onclick="pick('${esc(s.filename)}',true)">
+        <div class="s-radio"></div><span class="s-fname">${esc(s.name)}</span></div>`;
+    });
+  });
+  document.getElementById('s-list').innerHTML = out || '<div style="padding:12px 14px;color:var(--text3);font-size:12px">Не найдено</div>';
+}
+
+function pick(filename, closeAfter=true) {
+  sel = filename;
+  localStorage.setItem('selStrategy', filename);
+  document.querySelectorAll('.s-item').forEach(el=>el.classList.toggle('selected', el.dataset.f===filename));
+  document.getElementById('s-cur').textContent = filename.replace('.bat','');
+  document.getElementById('s-hint').textContent = '';
+  document.getElementById('s-dot').classList.add('active');
+  if(closeAfter) closeList();
+  // Перерисовываем кнопки — если запущено и выбрали другую стратегию, покажем рестарт
+  refreshButtons();
+}
+
+// ── Запуск / стоп / перезапуск ────────────────────────────────────────────────
+async function doStart(filename) {
+  log(`▶ Запуск: ${filename.replace('.bat','')}`, 'info');
+  await invoke('start_strategy', { filename });
+  // active = то что запустили, sel = то что выбрано в UI
+  // После запуска они равны — кнопка рестарт не нужна
+  active  = filename;
+  running = true;
+  refreshButtons();
+  document.getElementById('sb-strat').textContent = filename.replace('.bat','');
+  document.getElementById('sb-strat').style.color = 'var(--green)';
+  log('✔ Стратегия запущена', 'success');
+}
+
+document.getElementById('btn-start').onclick = async () => {
+  if(!sel) { toast('Выберите стратегию!','warn'); return; }
+  try { await doStart(sel); }
+  catch(e) { log('Ошибка: '+e,'error'); toast(String(e),'error'); }
+};
+
+document.getElementById('btn-stop').onclick = async () => {
+  try {
+    log('■ Остановка…','warn');
+    await invoke('stop_strategy');
+    setRunning(false);
+    document.getElementById('sb-strat').textContent = 'нет активной стратегии';
+    document.getElementById('sb-strat').style.color = 'var(--text3)';
+    log('✔ Остановлено','success');
+  } catch(e) { log('Ошибка: '+e,'error'); toast(String(e),'error'); }
+};
+
+document.getElementById('btn-restart').onclick = async () => {
+  if(!sel) return;
+  try {
+    log(`↺ Перезапуск: ${sel.replace('.bat','')}…`,'warn');
+    await invoke('stop_strategy');
+    active  = null;
+    running = false;
+    await new Promise(r=>setTimeout(r,600));
+    await doStart(sel);
+    toast(`Перезапущено: ${sel.replace('.bat','')}`, 'success');
+  } catch(e) { log('Ошибка перезапуска: '+e,'error'); toast(String(e),'error'); }
+};
+
+// Rust события
+listen('log',    e=>log(e.payload.text, e.payload.level));
+listen('status', e=>{
+  // Ивент winws hidden (1.5с после старта) — просто обновляем индикатор
+  // НЕ трогаем active и sel — они уже выставлены в doStart
+  if(e.payload.running && !running) {
+    running = true;
+    refreshButtons();
+  } else if(!e.payload.running && running) {
+    setRunning(false);
+  }
+});
+listen('zapret_dir_ready', ()=>loadStrategies());
+
+setInterval(async()=>{
+  if(!running) return;
+  try { const ok=await invoke('get_process_status'); if(!ok){ setRunning(false); log('⚠ Процесс завершился','warn'); } }
+  catch(_){}
+}, 2000);
+
+// ── Обновления ────────────────────────────────────────────────────────────────
+async function checkUpdates(silent=false) {
+  try {
+    const info = await invoke('check_zapret_updates');
+    if(info.has_update) {
+      document.getElementById('update-title').textContent = `Новая версия: ${info.latest_tag}`;
+      document.getElementById('update-sub').textContent   = `Установлена: ${info.current_version}`;
+      document.getElementById('update-banner').classList.add('visible');
+      document.getElementById('btn-update-now').onclick = startDownload;
+      document.getElementById('upd-info').textContent = `Доступно: ${info.latest_tag}`;
+      if(!silent) toast(`Доступна версия ${info.latest_tag}`,'info',5000);
+    } else {
+      if(!silent) { log(`✔ Версия актуальна: ${info.latest_tag}`,'info'); toast(`Актуальная версия: ${info.latest_tag}`,'success'); }
+      document.getElementById('upd-info').textContent = `Актуальная версия: ${info.latest_tag||info.current_version}`;
+    }
+  } catch(e) { if(!silent) { log('Ошибка: '+e,'error'); toast(String(e),'error'); } }
+}
+
+document.getElementById('btn-upd').onclick          = ()=>checkUpdates(false);
+document.getElementById('btn-settings-upd').onclick = ()=>checkUpdates(false);
+document.getElementById('btn-gh').onclick            = ()=>openLink('https://github.com/Flowseal/zapret-discord-youtube');
+function openLink(url) { invoke('open_url',{url}); }
+
+// ── Скачивание ────────────────────────────────────────────────────────────────
+listen('download_progress', e=>{
+  const {message,progress} = e.payload;
+  document.getElementById('inst-bar').style.width = progress+'%';
+  document.getElementById('inst-msg').textContent  = message;
+  if(progress>0&&progress<100) log(message,'info');
+});
+
+async function startDownload() {
+  const btn = document.getElementById('btn-install');
+  btn.disabled=true; btn.textContent='⏳ Скачивание…';
+  document.getElementById('btn-reinstall').disabled=true;
+  toast('Скачивание zapret…','info',12000);
+  try {
+    const dir = await invoke('download_zapret');
+    await invoke('set_zapret_dir',{path:dir});
+    log('✔ zapret установлен!','success');
+    toast('zapret успешно установлен!','success');
+    showMain();
+    await loadStrategies();
+    checkUpdates(true);
+    loadSvcStatus();
+  } catch(e) { log('Ошибка: '+e,'error'); toast(String(e),'error',6000); }
+  finally {
+    btn.disabled=false; btn.textContent='⬇ Попробовать снова';
+    document.getElementById('btn-reinstall').disabled=false;
+  }
+}
+document.getElementById('btn-install').onclick = startDownload;
+
+// Переустановить — сначала удаляем сервисы, потом скачиваем
+document.getElementById('btn-reinstall').onclick = async () => {
+  if(!confirm('Переустановить zapret?\n\nСначала будут остановлены все службы.')) return;
+  toast('Остановка служб…', 'info', 2000);
+  try { await invoke('stop_strategy'); setRunning(false); } catch(_){}
+  try { await invoke('run_service_action', { action: 'remove' }); } catch(_){}
+  await new Promise(r=>setTimeout(r,1000));
+  startDownload();
+};
+
+// Удалить zapret полностью
+document.getElementById('btn-uninstall').onclick = async () => {
+  if(!confirm('Полностью удалить zapret?\n\n• Остановить и удалить службы\n• Удалить файлы zapret\n• Убрать из автозапуска')) return;
+  toast('Удаление zapret…', 'warn', 5000);
+  log('🗑 Начало удаления zapret…', 'warn');
+  try {
+    await invoke('stop_strategy'); setRunning(false);
+  } catch(_){}
+  try {
+    await invoke('run_service_action', { action: 'remove' });
+  } catch(_){}
+  try {
+    await invoke('set_autostart_registry', { enable: false });
+    document.getElementById('tgl-autostart').checked = false;
+  } catch(_){}
+  try {
+    await invoke('uninstall_zapret');
+    log('✔ Файлы zapret удалены', 'success');
+    toast('zapret полностью удалён', 'success', 5000);
+    // Показываем экран установки
+    document.getElementById('install-screen').style.display='flex';
+    document.getElementById('main-app').style.display='none';
+    document.getElementById('inst-bar').style.width='0%';
+    document.getElementById('inst-msg').textContent='';
+  } catch(e) { log('Ошибка: '+e,'error'); toast(String(e),'error',6000); }
+};
+
+// ── Инструменты ───────────────────────────────────────────────────────────────
+const SVC_LABELS = {
+  install:'Установка службы…', remove:'Удаление служб…',
+  game_filter_off:'Изменение Game Filter…', game_filter_all:'Изменение Game Filter…',
+  game_filter_tcp:'Изменение Game Filter…', game_filter_udp:'Изменение Game Filter…',
+  ipset_none:'Изменение IPSet…', ipset_any:'Изменение IPSet…', ipset_loaded:'Изменение IPSet…',
+  toggle_autoupdate:'Изменение автопроверки…',
+  update_ipset:'Обновление ipset-all.txt…', update_hosts:'Проверка hosts файла…',
+  diagnostics:'Запуск диагностики…', run_tests:'Запуск тестов…',
+};
+
+async function svc(action) {
+  toast(SVC_LABELS[action]||action, 'info', 2000);
+  try {
+    const result = await invoke('run_service_action', { action });
+    toast(result, 'success', 4000);
+    if(action.startsWith('game_')||action.startsWith('ipset_')||action==='toggle_autoupdate') loadSvcStatus();
+  } catch(e) { log('Ошибка: '+String(e),'error'); toast(String(e),'error',6000); }
+}
+
+document.getElementById('btn-svc-chk').onclick = async()=>{
+  const el = document.getElementById('svc-list');
+  el.innerHTML='<div style="color:var(--text3);font-size:12px">Проверка…</div>';
+  try {
+    const svcs = await invoke('check_services');
+    el.innerHTML = svcs.length
+      ? svcs.map(s=>`<div class="svc-item">
+          <div class="svc-dot ${s.running?'running':''}"></div>
+          <span style="flex:1;font-family:var(--mono);font-size:12px">${s.name}</span>
+          <span class="svc-badge ${s.running?'running':'stopped'}">${s.running?'ЗАПУЩЕНА':'ОСТАНОВЛЕНА'}</span></div>`).join('')
+      : '<div style="color:var(--text3);font-size:12px">Службы zapret не обнаружены</div>';
+  } catch(e) { el.innerHTML=`<div style="color:var(--red);font-size:12px">${esc(e)}</div>`; }
+};
+
+async function loadSvcStatus() {
+  try {
+    const s = await invoke('get_service_status');
+    document.getElementById('gf-val').textContent    = s.game_filter;
+    document.getElementById('ipset-val').textContent = s.ipset_filter;
+    document.getElementById('au-val').textContent    = s.auto_update;
+    document.querySelectorAll('.isel-btn[id^="gf"]').forEach(b=>b.classList.remove('active'));
+    const gm={'выключен':'gf-off','TCP и UDP':'gf-all','только TCP':'gf-tcp','только UDP':'gf-udp'};
+    if(gm[s.game_filter]) document.getElementById(gm[s.game_filter]).classList.add('active');
+    document.querySelectorAll('.isel-btn[id^="ipset"]').forEach(b=>b.classList.remove('active'));
+    if(s.ipset_filter==='none')                document.getElementById('ipset-none').classList.add('active');
+    else if(s.ipset_filter==='any')            document.getElementById('ipset-any').classList.add('active');
+    else if(s.ipset_filter.startsWith('loaded')) document.getElementById('ipset-loaded').classList.add('active');
+  } catch(_){}
+}
+
+// ── Лог ───────────────────────────────────────────────────────────────────────
+document.getElementById('btn-log-clear').onclick = ()=>{
+  logs=[];
+  document.getElementById('mini-log').innerHTML='';
+  document.getElementById('full-log').innerHTML='';
+};
+document.getElementById('btn-log-save').onclick = ()=>{
+  const a = Object.assign(document.createElement('a'),{
+    href:URL.createObjectURL(new Blob([logs.map(l=>`[${l.ts}] ${l.text}`).join('\n')],{type:'text/plain'})),
+    download:`zapret-${new Date().toISOString().slice(0,10)}.log`
+  });
+  a.click();
+};
+
+// ── Настройки ─────────────────────────────────────────────────────────────────
+document.getElementById('tgl-autostart').onchange = async e=>{
+  try {
+    await invoke('set_autostart_registry', { enable: e.target.checked });
+    toast(e.target.checked ? 'Добавлен в автозапуск Windows' : 'Удалён из автозапуска', 'success');
+  } catch(err) { toast('Ошибка: '+err,'error'); e.target.checked=!e.target.checked; }
+};
+document.getElementById('tgl-autorun').onchange = e=>{ localStorage.setItem('autorun', e.target.checked); };
+
+// ── Экраны ────────────────────────────────────────────────────────────────────
+function showMain() {
+  document.getElementById('install-screen').style.display='none';
+  document.getElementById('main-app').style.display='flex';
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function init() {
+  refreshButtons(); // начальное состояние кнопок
+  try { document.getElementById('tgl-autostart').checked = await invoke('get_autostart_registry'); } catch(_){}
+  document.getElementById('tgl-autorun').checked = localStorage.getItem('autorun')==='true';
+
+  const installed = await invoke('is_zapret_installed');
+  if(installed) {
+    showMain();
+    const dir = await invoke('get_default_zapret_dir');
+    try { await invoke('set_zapret_dir',{path:dir}); } catch(_){}
+    await loadStrategies();
+    loadSvcStatus();
+    if(localStorage.getItem('autorun')==='true' && sel) {
+      // При автозапуске с Windows ждём инициализации сети (5с),
+      // затем пробуем запустить. При неудаче повторяем ещё 2 раза.
+      const autolaunch = async () => {
+        const MAX_ATTEMPTS = 3;
+        const RETRY_DELAY  = 8000; // 8 секунд между попытками
+
+        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+          try {
+            if (attempt > 1) {
+              log(`↻ Повтор автозапуска (попытка ${attempt}/${MAX_ATTEMPTS})…`, 'warn');
+              await new Promise(r => setTimeout(r, RETRY_DELAY));
+            }
+            await doStart(sel);
+            // Ждём 3 секунды и проверяем что процесс живой
+            await new Promise(r => setTimeout(r, 3000));
+            const alive = await invoke('get_process_status');
+            if (alive) {
+              log('✔ Автозапуск успешен', 'success');
+              return; // успешно — выходим
+            } else {
+              log(`⚠ Процесс упал после запуска (попытка ${attempt}/${MAX_ATTEMPTS})`, 'warn');
+              running = false;
+              active  = null;
+              refreshButtons();
+            }
+          } catch(e) {
+            log(`⚠ Ошибка автозапуска (попытка ${attempt}/${MAX_ATTEMPTS}): ${e}`, 'warn');
+          }
+        }
+        log('✗ Автозапуск не удался после 3 попыток. Запустите стратегию вручную.', 'error');
+        toast('Автозапуск не удался — запустите стратегию вручную', 'error', 8000);
+      };
+
+      // Задержка 5 секунд чтобы дать сети инициализироваться
+      setTimeout(autolaunch, 5000);
+    }
+    setTimeout(()=>checkUpdates(true), 3000);
+  } else {
+    document.getElementById('install-screen').style.display='flex';
+    document.getElementById('main-app').style.display='none';
+  }
+}
+
+document.getElementById('btn-open-dir').onclick = async () => {
+  try {
+    await invoke('open_zapret_dir');
+  } catch(e) { toast(String(e), 'error'); }
+};
+
+init();
+</script>
+</body>
+</html>

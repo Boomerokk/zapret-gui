@@ -1,0 +1,26 @@
+# Rust / Cargo
+src-tauri/target/
+
+# Node.js
+node_modules/
+dist/
+
+# Tauri build artifacts
+src-tauri/WixTools/
+*.msi
+*.deb
+*.app
+*.dmg
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Logs
+*.log
+.vs/
