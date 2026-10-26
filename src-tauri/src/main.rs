@@ -461,16 +461,47 @@ async fn download_zapret(app: AppHandle) -> Result<String, String> {
     std::fs::create_dir_all(&zapret_dir).map_err(|e| e.to_string())?;
     let cursor = std::io::Cursor::new(bytes);
     let mut archive = zip::ZipArchive::new(cursor).map_err(|e| format!("Ошибка архива: {e}"))?;
+
+    // Определяем общую корневую папку архива (например "zapret-discord-youtube-1.10.4/")
+    // и срезаем её, чтобы файлы легли прямо в zapret_dir.
+    let root_prefix = {
+        let mut root: Option<String> = None;
+        for i in 0..archive.len() {
+            let name = archive.by_index(i).map_err(|e| e.to_string())?.name().to_string();
+            let path = std::path::Path::new(&name);
+            if path.components().count() == 0 { continue; }
+            let top = path.components().next().unwrap().as_os_str().to_string_lossy().to_string();
+            if top.is_empty() { continue; }
+            root = match root {
+                None => Some(top),
+                Some(r) if r == top => Some(top),
+                // Разные корневые папки у записей — общего префикса нет
+                Some(_) => { root = Some(String::new()); break; }
+            };
+        }
+        root.unwrap_or_default()
+    };
+
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
         let raw = file.name().to_string();
         if raw.ends_with('/') { continue; }
-        let out = zapret_dir.join(PathBuf::from(raw.replace('/', std::path::MAIN_SEPARATOR_STR)));
+        // Срезаем корневую папку, если она есть
+        let stripped = if root_prefix.is_empty() {
+            raw.clone()
+        } else {
+            raw.strip_prefix(&format!("{root_prefix}/")).unwrap_or(&raw).to_string()
+        };
+        if stripped.is_empty() { continue; }
+        let out = zapret_dir.join(PathBuf::from(stripped.replace('/', std::path::MAIN_SEPARATOR_STR)));
         if let Some(p) = out.parent() { std::fs::create_dir_all(p).ok(); }
         let mut f = std::fs::File::create(&out).map_err(|e| e.to_string())?;
         std::io::copy(&mut file, &mut f).map_err(|e| e.to_string())?;
     }
     std::fs::write(zapret_dir.join(".version"), &tag).ok();
+    if !zapret_dir.join("general.bat").exists() {
+        return Err(format!("Архив распакован, но general.bat не найден в {root_prefix}. Структура архива изменилась?"));
+    }
     emit("done", format!("Готово! Версия {tag}"), 100);
     Ok(zapret_dir.to_string_lossy().to_string())
 }
